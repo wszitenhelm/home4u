@@ -19,7 +19,6 @@ Excluded on purpose:
 - authentication
 - saved searches
 - favourites
-- maps and coordinates
 - multiple marketplaces
 - Elasticsearch or vector search
 - admin dashboards
