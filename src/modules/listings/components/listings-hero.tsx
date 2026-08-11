@@ -14,7 +14,6 @@ export function ListingsHero({ filters, naturalQuery }: ListingsHeroProps): Reac
   return (
     <section className="listings-hero">
       <div className="listings-hero__content">
-        <p className="eyebrow listings-hero__eyebrow">Prodomy</p>
         <h1 className="listings-hero__title">Znajdź mieszkanie, w którym zamieszkasz</h1>
         <p className="listings-hero__subtitle">
           Przeglądaj sprawdzone oferty sprzedaży i wynajmu w czterech największych miastach.

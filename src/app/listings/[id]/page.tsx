@@ -14,6 +14,7 @@ import {
   formatPriceMeta,
   formatRooms,
   formatTransactionType,
+  splitDescriptionIntoParagraphs,
 } from "@/modules/listings/formatters";
 import { getListingDetail } from "@/modules/listings/service";
 
@@ -38,6 +39,18 @@ function DetailRow({
     <div className="detail-row">
       <dt>{label}</dt>
       <dd>{value}</dd>
+    </div>
+  );
+}
+
+function FormattedDescription({ text }: { readonly text: string }): React.JSX.Element {
+  const paragraphs = splitDescriptionIntoParagraphs(text);
+
+  return (
+    <div className="description">
+      {paragraphs.map((paragraph, index) => (
+        <p key={index}>{paragraph}</p>
+      ))}
     </div>
   );
 }
@@ -163,13 +176,17 @@ export default async function ListingDetailPage({
         {listing.aiSummary === null ? (
           <section className="panel">
             <h2>Opis</h2>
-            <p className="description">{listing.description ?? "Opis nie został udostępniony."}</p>
+            {listing.description === null ? (
+              <p className="description">Opis nie został udostępniony.</p>
+            ) : (
+              <FormattedDescription text={listing.description} />
+            )}
           </section>
         ) : listing.description !== null ? (
           <section className="panel source-description">
             <details>
               <summary>Pokaż pełny opis źródłowy</summary>
-              <p className="description">{listing.description}</p>
+              <FormattedDescription text={listing.description} />
             </details>
           </section>
         ) : null}

@@ -36,17 +36,6 @@ export function ListingFilters({ filters, naturalQuery }: ListingFiltersProps): 
       </div>
       <fieldset className="filters-grid">
         <legend className="sr-only">Filtry wyszukiwania ofert</legend>
-        <label className="field field--wide">
-          <span>Szukaj</span>
-          <input
-            defaultValue={naturalQuery ?? filters.q ?? ""}
-            maxLength={500}
-            name="query"
-            placeholder="np. chcę wynająć mieszkanie w Krakowie"
-            type="search"
-          />
-        </label>
-
         <label className="field">
           <span>Dzielnica</span>
           <input defaultValue={filters.district ?? ""} name="district" placeholder="np. Krowodrza" type="text" />

@@ -22,7 +22,7 @@ export function ListingCard({ listing }: ListingCardProps): ReactElement {
 
   return (
     <article className="listing-card">
-      <div className="listing-card__media">
+      <Link className="listing-card__media" href={`/listings/${listing.id}`}>
         {listing.photo === null ? (
           <div className="listing-card__placeholder">Brak zdjęcia</div>
         ) : (
@@ -32,7 +32,7 @@ export function ListingCard({ listing }: ListingCardProps): ReactElement {
         <span className={`listing-badge listing-badge--${listing.transactionType.toLowerCase()}`}>
           {formatTransactionType(listing.transactionType)}
         </span>
-      </div>
+      </Link>
       <div className="listing-card__content">
         <div className="listing-card__headline">
           <h3>

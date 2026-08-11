@@ -286,3 +286,26 @@ export function formatFeatureValue(feature: ListingFeature): string {
 
   return feature.rawValue === null ? label : `${label}: ${feature.rawValue}`;
 }
+
+const sentenceBoundary = /(?<=[.!?])\s+(?=[A-ZĄĆĘŁŃÓŚŹŻ])/u;
+const sentencesPerParagraph = 3;
+
+export function splitDescriptionIntoParagraphs(description: string): string[] {
+  return description
+    .split("\n")
+    .map((block) => block.trim())
+    .filter((block) => block.length > 0)
+    .flatMap((block) => {
+      const sentences = block
+        .split(sentenceBoundary)
+        .map((sentence) => sentence.trim())
+        .filter((sentence) => sentence.length > 0);
+      const paragraphs: string[] = [];
+
+      for (let index = 0; index < sentences.length; index += sentencesPerParagraph) {
+        paragraphs.push(sentences.slice(index, index + sentencesPerParagraph).join(" "));
+      }
+
+      return paragraphs;
+    });
+}
