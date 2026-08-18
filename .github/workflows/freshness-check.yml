@@ -1,0 +1,55 @@
+name: Freshness check
+
+# Low-frequency maintenance job: re-checks every PUBLISHED primary listing
+# against its source page and flips confirmed-removed ones to EXPIRED.
+# Only talks to the database and the source marketplace — never touches git
+# or pushes anything back to the repo.
+on:
+  schedule:
+    # Once a day, off the hour to avoid the GitHub Actions top-of-hour rush.
+    - cron: "23 4 * * *"
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Optional cap on how many listings to check (--limit=N)"
+        required: false
+        type: string
+
+jobs:
+  check-freshness:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run freshness check
+        env:
+          NODE_ENV: production
+          APP_BASE_URL: https://home4u.vercel.app
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          INGESTION_SOURCE: selected-marketplace
+          INGESTION_CITIES: krakow,warszawa,wroclaw,gdansk
+          INGESTION_TARGET_SALE: "50"
+          INGESTION_TARGET_RENT: "50"
+          INGESTION_MAX_CANDIDATES: "250"
+          INGESTION_MAX_RESULT_PAGES: "10"
+          INGESTION_SEED: real-estate-mvp-v1
+          INGESTION_HTTP_CONCURRENCY: "4"
+          INGESTION_BROWSER_CONCURRENCY: "1"
+          INGESTION_HTTP_TIMEOUT_MS: "15000"
+          INGESTION_BROWSER_TIMEOUT_MS: "30000"
+          INGESTION_MAX_REQUEST_ATTEMPTS: "3"
+          INGESTION_USER_AGENT: "Home4uMvpCrawler/0.1 (+https://home4u.vercel.app)"
+        run: node --import tsx scripts/check-freshness.ts ${{ inputs.limit && format('--limit={0}', inputs.limit) || '' }}

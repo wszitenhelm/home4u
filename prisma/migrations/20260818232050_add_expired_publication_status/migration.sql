@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `Listing` MODIFY `publicationStatus` ENUM('PUBLISHED', 'REJECTED', 'NEEDS_REVIEW', 'DUPLICATE', 'EXPIRED') NOT NULL;

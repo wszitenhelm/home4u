@@ -7,6 +7,7 @@ export const publicationStatuses = [
   "REJECTED",
   "NEEDS_REVIEW",
   "DUPLICATE",
+  "EXPIRED",
 ] as const;
 export const ingestionStages = [
   "DISCOVERY",
