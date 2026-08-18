@@ -1,4 +1,4 @@
-# Prodomy - Technical Reasoning
+# Home4u - Technical Reasoning
 
 Before starting, I looked at several popular property websites to understand what makes searching for a flat easy. I combined the most useful ideas from different websites to build a clean MVP. 
 

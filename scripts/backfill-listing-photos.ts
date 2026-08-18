@@ -16,7 +16,7 @@ async function fetchListingHtml(url: string): Promise<string> {
     headers: {
       accept: "text/html,application/xhtml+xml",
       "accept-language": "pl-PL,pl;q=0.9",
-      "user-agent": "ProdomyMvpImporter/1.0 (+local educational project)",
+      "user-agent": "Home4uMvpImporter/1.0 (+local educational project)",
     },
     signal: AbortSignal.timeout(requestTimeoutMs),
   });

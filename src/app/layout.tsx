@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Prodomy",
+  title: "Home4u",
   description: "Publiczny katalog mieszkań na sprzedaż i wynajem",
 };
 
