@@ -24,7 +24,8 @@
     "ingest": "node --env-file=.env --import tsx scripts/ingest.ts",
     "ai:backfill": "node --env-file=.env --import tsx scripts/backfill-ai-summaries.ts",
     "photos:backfill": "node --env-file=.env --import tsx scripts/backfill-listing-photos.ts",
-    "locations:backfill": "node --env-file=.env --import tsx scripts/backfill-listing-coordinates.ts"
+    "locations:backfill": "node --env-file=.env --import tsx scripts/backfill-listing-coordinates.ts",
+    "freshness:check": "node --env-file=.env --import tsx scripts/check-freshness.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

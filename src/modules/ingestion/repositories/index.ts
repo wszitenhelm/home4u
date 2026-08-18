@@ -9,7 +9,7 @@ import type {
   PersistedIngestionResult,
   ValidatedIngestionDecision,
 } from "@/modules/ingestion/types";
-import type { ListingFeatureKey, PublicationStatus } from "@/modules/listings/constants";
+import type { ListingFeatureKey } from "@/modules/listings/constants";
 import { mapSelectedMarketplaceFeature } from "@/scraping/selected-marketplace/attribute-map";
 
 function toDate(value: string | null): Date | null {
@@ -88,7 +88,7 @@ export function createIngestionRepository(
     readonly importRunId: string;
     readonly listing: NormalizedIngestionListing;
     readonly decision: ValidatedIngestionDecision;
-    readonly publicationStatus: PublicationStatus;
+    readonly publicationStatus: "PUBLISHED" | "REJECTED" | "NEEDS_REVIEW" | "DUPLICATE";
     readonly duplicateGroupId: string | null;
     readonly isPrimary: boolean;
     readonly duplicateScore: DuplicateScore | null;

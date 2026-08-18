@@ -519,6 +519,7 @@ export function createSeedDataset(): SeedDataset {
       REJECTED: 0,
       NEEDS_REVIEW: 0,
       DUPLICATE: 0,
+      EXPIRED: 0,
     },
   );
 

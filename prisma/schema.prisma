@@ -166,6 +166,7 @@ enum PublicationStatus {
   REJECTED
   NEEDS_REVIEW
   DUPLICATE
+  EXPIRED
 }
 
 enum IngestionStage {
