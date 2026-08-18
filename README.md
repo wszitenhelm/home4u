@@ -1,6 +1,6 @@
-# Prodomy
+# Home4u
 
-Prodomy is a Smart Real Estate Listings Platform MVP for Polish apartments. It ingests listings from one public marketplace, normalizes noisy source data, keeps low-quality and duplicate outcomes observable internally, and exposes only published primary listings through a Next.js application and public API.
+Home4u is a Smart Real Estate Listings Platform MVP for Polish apartments. It ingests listings from one public marketplace, normalizes noisy source data, keeps low-quality and duplicate outcomes observable internally, and exposes only published primary listings through a Next.js application and public API.
 
 ## Project overview
 
@@ -152,8 +152,8 @@ Connection defaults:
 
 - host: `127.0.0.1`
 - port: `3306`
-- database: `prodomy`
-- user: `prodomy`
+- database: `home4u`
+- user: `home4u`
 
 ## Migrations
 

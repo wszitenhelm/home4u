@@ -287,7 +287,7 @@ function createPublishedPrimaryListing(
   index: number,
   duplicateGroupId: string | null,
 ): SeedListingRecord {
-  const rng = createRng(`prodomy-db:${cityDefinition.slug}:${transactionType}:${index}`);
+  const rng = createRng(`home4u-db:${cityDefinition.slug}:${transactionType}:${index}`);
   const areaBase = transactionType === "SALE" ? 34 + rng() * 58 : 28 + rng() * 44;
   const area = roundToStep(areaBase, 0.1);
   const rooms = inferRooms(area, rng);
@@ -336,8 +336,8 @@ function createPublishedPrimaryListing(
   return {
     source: marketplace,
     sourceListingId,
-    sourceUrl: `https://listings.prodomy.test/${cityDefinition.slug}/${transactionType.toLowerCase()}/${sourceListingId}`,
-    sourceUrlCanonical: `https://listings.prodomy.test/${cityDefinition.slug}/${transactionType.toLowerCase()}/${sourceListingId}`,
+    sourceUrl: `https://listings.home4u.test/${cityDefinition.slug}/${transactionType.toLowerCase()}/${sourceListingId}`,
+    sourceUrlCanonical: `https://listings.home4u.test/${cityDefinition.slug}/${transactionType.toLowerCase()}/${sourceListingId}`,
     sourceContentHash: `hash-${sourceListingId}`,
     propertyType: "APARTMENT",
     transactionType,
@@ -372,7 +372,7 @@ function createPublishedPrimaryListing(
     sourcePublishedAt,
     sourceUpdatedAt,
     scrapedAt,
-    contactName: sellerType === "biuro nieruchomości" ? "Biuro Prodomy" : "Właściciel",
+    contactName: sellerType === "biuro nieruchomości" ? "Biuro Home4u" : "Właściciel",
     contactPhone: rng() < 0.7 ? `+48 50${Math.floor(1000000 + rng() * 8999999)}` : null,
     rawAttributes: {
       Powierzchnia: `${formatDecimal(area, 1)} m²`,
@@ -559,7 +559,7 @@ export function createSeedDataset(): SeedDataset {
     })),
     {
       listingSourceListingId: null,
-      sourceUrl: "https://listings.prodomy.test/fetch-failure/1",
+      sourceUrl: "https://listings.home4u.test/fetch-failure/1",
       stage: "FETCH",
       result: "FAILED",
       code: "HTTP_503",
@@ -570,7 +570,7 @@ export function createSeedDataset(): SeedDataset {
     },
     {
       listingSourceListingId: null,
-      sourceUrl: "https://listings.prodomy.test/parse-failure/1",
+      sourceUrl: "https://listings.home4u.test/parse-failure/1",
       stage: "PARSE",
       result: "FAILED",
       code: "MISSING_EMBEDDED_STATE",
