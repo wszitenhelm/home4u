@@ -364,6 +364,17 @@ textarea {
   gap: 0.9rem;
 }
 
+.filters-side-group {
+  display: grid;
+  align-content: start;
+  gap: 0.9rem;
+  min-width: 180px;
+}
+
+.filters-side-group .button-link {
+  justify-self: start;
+}
+
 .field-checkbox-group {
   display: flex;
   flex-wrap: wrap;
