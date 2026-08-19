@@ -38,4 +38,45 @@ describe("natural listing search", () => {
       features: ["BALCONY"],
     });
   });
+
+  it("understands an exact floor and a garage request", () => {
+    expect(
+      parseNaturalSearchLocally("Mieszkanie na 4 piętrze w Gdańsku z garażem"),
+    ).toMatchObject({
+      cities: ["Gdańsk"],
+      minFloor: 4,
+      maxFloor: 4,
+      features: ["GARAGE"],
+    });
+  });
+
+  it("understands a one-sided minimum floor phrased as 'or higher'", () => {
+    expect(parseNaturalSearchLocally("Mieszkanie na sprzedaż, 3 piętro lub wyżej")).toMatchObject({
+      transactionType: "SALE",
+      minFloor: 3,
+      maxFloor: null,
+    });
+  });
+
+  it("understands 'od' as a one-sided minimum floor", () => {
+    expect(parseNaturalSearchLocally("Szukam mieszkania od 2 piętra")).toMatchObject({
+      minFloor: 2,
+      maxFloor: null,
+    });
+  });
+
+  it("understands a one-sided maximum floor", () => {
+    expect(parseNaturalSearchLocally("Mieszkanie do 3 piętra z parkingiem")).toMatchObject({
+      minFloor: null,
+      maxFloor: 3,
+      features: ["PARKING"],
+    });
+  });
+
+  it("understands parter as ground floor", () => {
+    expect(parseNaturalSearchLocally("Mieszkanie na parterze")).toMatchObject({
+      minFloor: 0,
+      maxFloor: 0,
+    });
+  });
 });

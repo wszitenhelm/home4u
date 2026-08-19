@@ -22,9 +22,12 @@ export function ListingFilters({ filters, naturalQuery }: ListingFiltersProps): 
         <input name="transactionType" type="hidden" value={filters.transactionType} />
       ) : null}
       {filters.city?.map((city) => <input key={city} name="city" type="hidden" value={city} />)}
-      {filters.features?.map((feature) => (
-        <input key={feature} name="features" type="hidden" value={feature} />
-      ))}
+      {/* GARAGE and PARKING are checkboxes below; any other feature (e.g.
+          from a prior natural-language search) is preserved as-is so
+          toggling those two checkboxes doesn't clobber it. */}
+      {filters.features
+        ?.filter((feature) => feature !== "GARAGE" && feature !== "PARKING")
+        .map((feature) => <input key={feature} name="features" type="hidden" value={feature} />)}
       <div className="filters-card__header">
         <div>
           <p className="eyebrow">Wyszukiwanie</p>
@@ -75,6 +78,43 @@ export function ListingFilters({ filters, naturalQuery }: ListingFiltersProps): 
             <label className="field">
               <span>Metraż do</span>
               <input defaultValue={filters.maxArea?.toString() ?? ""} inputMode="decimal" min="1" name="maxArea" placeholder="np. 80" step="0.1" type="number" />
+            </label>
+          </div>
+
+          <div className="field-range-row">
+            <label className="field">
+              <span>Piętro od</span>
+              <input defaultValue={filters.minFloor?.toString() ?? ""} inputMode="numeric" min="0" name="minFloor" placeholder="np. 0" type="number" />
+            </label>
+
+            <label className="field">
+              <span>Piętro do</span>
+              <input defaultValue={filters.maxFloor?.toString() ?? ""} inputMode="numeric" min="0" name="maxFloor" placeholder="np. 4" type="number" />
+            </label>
+          </div>
+        </div>
+
+        <div className="field field--wide">
+          <span>Udogodnienia</span>
+          <div className="field-checkbox-group">
+            <label className="field-checkbox">
+              <input
+                defaultChecked={filters.features?.includes("GARAGE") ?? false}
+                name="features"
+                type="checkbox"
+                value="GARAGE"
+              />
+              Garaż
+            </label>
+
+            <label className="field-checkbox">
+              <input
+                defaultChecked={filters.features?.includes("PARKING") ?? false}
+                name="features"
+                type="checkbox"
+                value="PARKING"
+              />
+              Parking
             </label>
           </div>
         </div>

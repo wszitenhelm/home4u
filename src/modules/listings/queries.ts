@@ -11,6 +11,8 @@ export function parseListingSearchParams(searchParams: URLSearchParams): Listing
     maxPrice: searchParams.get("maxPrice") ?? undefined,
     minArea: searchParams.get("minArea") ?? undefined,
     maxArea: searchParams.get("maxArea") ?? undefined,
+    minFloor: searchParams.get("minFloor") ?? undefined,
+    maxFloor: searchParams.get("maxFloor") ?? undefined,
     rooms: searchParams.get("rooms") ?? undefined,
     features: searchParams.getAll("features"),
     active: searchParams.get("active") ?? undefined,
@@ -85,6 +87,14 @@ export function buildListingSearchHref(input: Partial<ListingSearchInput>): stri
 
   if (input.maxArea !== undefined) {
     searchParams.set("maxArea", String(input.maxArea));
+  }
+
+  if (input.minFloor !== undefined) {
+    searchParams.set("minFloor", String(input.minFloor));
+  }
+
+  if (input.maxFloor !== undefined) {
+    searchParams.set("maxFloor", String(input.maxFloor));
   }
 
   if (input.rooms !== undefined) {

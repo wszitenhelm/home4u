@@ -29,6 +29,8 @@ describe("listing query parsing", () => {
         maxPrice: "4500",
         minArea: "35.5",
         maxArea: "70",
+        minFloor: "1",
+        maxFloor: "4",
         rooms: "2",
         features: "BALCONY",
         page: "3",
@@ -46,6 +48,8 @@ describe("listing query parsing", () => {
       maxPrice: 4500,
       minArea: 35.5,
       maxArea: 70,
+      minFloor: 1,
+      maxFloor: 4,
       rooms: 2,
       features: ["BALCONY"],
       active: true,
@@ -76,6 +80,16 @@ describe("listing query parsing", () => {
 
     expect(parsed.features).toEqual(["BALCONY", "ELEVATOR"]);
     expect(buildListingSearchHref(parsed)).toContain("features=BALCONY&features=ELEVATOR");
+  });
+
+  it("parses and serializes a floor range, including ground floor", () => {
+    const parsed = parseListingSearchParams(
+      new URLSearchParams({ minFloor: "0", maxFloor: "0" }),
+    );
+
+    expect(parsed.minFloor).toBe(0);
+    expect(parsed.maxFloor).toBe(0);
+    expect(buildListingSearchHref(parsed)).toContain("minFloor=0&maxFloor=0");
   });
 
   it("preserves filters in pagination hrefs and omits reset defaults", () => {
@@ -137,5 +151,11 @@ describe("listing query parsing", () => {
         }),
       ),
     ).toThrow(/minPrice cannot be greater than maxPrice/i);
+  });
+
+  it("rejects an inverted floor range", () => {
+    expect(() =>
+      parseListingSearchParams(new URLSearchParams({ minFloor: "4", maxFloor: "1" })),
+    ).toThrow(/minFloor cannot be greater than maxFloor/i);
   });
 });

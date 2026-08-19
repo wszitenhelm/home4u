@@ -52,6 +52,8 @@ describe("listing repository", () => {
       maxPrice: 900000,
       minArea: 40,
       maxArea: 80,
+      minFloor: 1,
+      maxFloor: 5,
       rooms: 3,
       active: true,
       page: 1,
@@ -66,6 +68,22 @@ describe("listing repository", () => {
       rooms: 3,
       priceAmount: { gte: 500000, lte: 900000 },
       areaM2: { gte: 40, lte: 80 },
+      floor: { gte: 1, lte: 5 },
+    });
+  });
+
+  it("builds a one-sided floor filter, including ground floor", () => {
+    const where = buildPublicListingWhere({
+      minFloor: 0,
+      maxFloor: 0,
+      active: true,
+      page: 1,
+      pageSize: 20,
+      sort: "newest",
+    });
+
+    expect(where).toMatchObject({
+      floor: { gte: 0, lte: 0 },
     });
   });
 
