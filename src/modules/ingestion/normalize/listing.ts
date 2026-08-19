@@ -151,7 +151,15 @@ function resolveCandidates<T>(
 function detectPropertyType(raw: RawSourceListing): PropertyType | null {
   const text = `${raw.title ?? ""} ${raw.description ?? ""} ${raw.locationText ?? ""}`.toLowerCase();
 
-  if (/\b(dom|dzialka|lokal)\b/.test(text)) {
+  if (/\b(dom|dzialka)\b/.test(text)) {
+    return null;
+  }
+
+  // Bare "lokal" is ambiguous: descriptions routinely use it as a plain
+  // synonym for the apartment unit itself ("lokal został wykończony..."),
+  // not just commercial premises. Only the qualified phrase reliably means
+  // "not an apartment".
+  if (/\blokal\s+(użytkowy|usługowy|handlowy|biurowy)\b/.test(text)) {
     return null;
   }
 

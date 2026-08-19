@@ -4,6 +4,7 @@ import type { ParsedMarketplaceListing } from "@/scraping/types";
 import type { MarketplaceParseContext } from "@/scraping/types";
 import { createExtractionWarning } from "@/scraping/types";
 import { extractSelectedMarketplaceCoordinatesFromPayload } from "@/scraping/selected-marketplace/coordinates";
+import { extractSelectedMarketplaceLocationFromPayload } from "@/scraping/selected-marketplace/location";
 
 type LoadedCheerio = ReturnType<typeof import("cheerio").load>;
 type CheerioElement = Parameters<LoadedCheerio>[0];
@@ -326,7 +327,17 @@ export function parseSelectedMarketplaceListing(
   const extractionWarnings = [];
   const title = getText($("h1").first().text());
   const description = $(".page-details__description").first().html() ?? null;
-  const locationText = getText($(".page-details__location-row").first().text());
+  const nuxtDataText = $("#__NUXT_DATA__").text();
+  // Morizon no longer server-renders this row's text (the element exists in
+  // some pages but is empty pre-hydration), so fall back to the same
+  // address parsed out of the embedded Nuxt payload.
+  const locationRowText = getText($(".page-details__location-row").first().text());
+  const payloadLocation = extractSelectedMarketplaceLocationFromPayload(nuxtDataText);
+  const locationText =
+    locationRowText ??
+    (payloadLocation === null
+      ? null
+      : [payloadLocation.city, payloadLocation.district].filter((part) => part !== null).join(", "));
   const priceText = getText($(".details-price__item").first().text());
   const highlightedParameters = collectHighlightedParameters(context);
   const informationTables = collectInformationTables(context);
@@ -335,9 +346,7 @@ export function parseSelectedMarketplaceListing(
   const photos = collectPhotoUrls(context);
   const sourceListingId = url.match(/(mzn\d+)/i)?.[1] ?? null;
   const transactionTypeHint = inferTransactionType(url);
-  const coordinates = extractSelectedMarketplaceCoordinatesFromPayload(
-    $("#__NUXT_DATA__").text(),
-  );
+  const coordinates = extractSelectedMarketplaceCoordinatesFromPayload(nuxtDataText);
 
   if (title === null) {
     extractionWarnings.push(
