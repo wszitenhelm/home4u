@@ -1,9 +1,11 @@
 name: Freshness check
 
 # Low-frequency maintenance job: re-checks every PUBLISHED primary listing
-# against its source page and flips confirmed-removed ones to EXPIRED.
-# Only talks to the database and the source marketplace — never touches git
-# or pushes anything back to the repo.
+# against its source page. Flips confirmed-removed listings to EXPIRED, and
+# for listings still live, refreshes the photo gallery if the seller has
+# swapped photos on the source site since our original scrape (same page
+# fetch, no extra requests). Only talks to the database and the source
+# marketplace — never touches git or pushes anything back to the repo.
 on:
   schedule:
     # Once a day, off the hour to avoid the GitHub Actions top-of-hour rush.

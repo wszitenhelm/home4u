@@ -31,7 +31,7 @@ async function fetchListingHtml(url: string): Promise<string> {
 async function backfillListing(input: {
   readonly id: string;
   readonly sourceUrl: string;
-  readonly currentPhotoCount: number;
+  readonly currentPhotoUrls: readonly string[];
 }): Promise<BackfillResult> {
   const html = await fetchListingHtml(input.sourceUrl);
   const parsed = selectedMarketplaceAdapter.parseListing({
@@ -45,7 +45,14 @@ async function backfillListing(input: {
     throw new Error("No listing photos found; existing photos were preserved.");
   }
 
-  if (parsed.photos.length === input.currentPhotoCount) {
+  // Compare the actual URLs, not just the count: a seller can swap photos on
+  // Morizon's CDN without changing how many there are, which left stale,
+  // now-404ing URLs in place when this only checked the count.
+  const isSameGallery =
+    parsed.photos.length === input.currentPhotoUrls.length &&
+    parsed.photos.every((url, index) => url === input.currentPhotoUrls[index]);
+
+  if (isSameGallery) {
     return { status: "UNCHANGED", photoCount: parsed.photos.length };
   }
 
@@ -76,7 +83,7 @@ async function main(): Promise<void> {
     select: {
       id: true,
       sourceUrl: true,
-      _count: { select: { photos: true } },
+      photos: { select: { url: true }, orderBy: { position: "asc" } },
     },
     orderBy: { id: "asc" },
   });
@@ -100,7 +107,7 @@ async function main(): Promise<void> {
         const result = await backfillListing({
           id: listing.id,
           sourceUrl: listing.sourceUrl,
-          currentPhotoCount: listing._count.photos,
+          currentPhotoUrls: listing.photos.map((photo) => photo.url),
         });
 
         if (result.status === "UPDATED") {
