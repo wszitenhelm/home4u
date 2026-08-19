@@ -6,7 +6,7 @@ import { ListingFilters } from "@/modules/listings/components/listing-filters";
 import { ListingPagination } from "@/modules/listings/components/listing-pagination";
 import { ListingsHero } from "@/modules/listings/components/listings-hero";
 import { searchParamsToInput } from "@/modules/listings/queries";
-import { getListingIndex } from "@/modules/listings/service";
+import { getListingIndex, getSemanticListingIndex } from "@/modules/listings/service";
 
 interface ListingsViewProps {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -18,7 +18,13 @@ export async function ListingsView({
   try {
     const rawSearchParams = await searchParams;
     const filters = searchParamsToInput(rawSearchParams);
-    const result = await getListingIndex(filters);
+    // Semantic search is a distinct, additional entry point (embedding-based
+    // similarity ranking) alongside the structured filters and
+    // natural-language search below, not combined with either for now.
+    const result =
+      filters.semanticQuery === undefined
+        ? await getListingIndex(filters)
+        : await getSemanticListingIndex(filters);
     const naturalQuery =
       typeof rawSearchParams.naturalQuery === "string"
         ? rawSearchParams.naturalQuery
@@ -37,7 +43,11 @@ export async function ListingsView({
             <header className="panel results-header">
               <div>
                 <p className="eyebrow">Oferty mieszkań</p>
-                <h2>Przeglądaj aktywne ogłoszenia</h2>
+                <h2>
+                  {filters.semanticQuery === undefined
+                    ? "Przeglądaj aktywne ogłoszenia"
+                    : `Wyniki wyszukiwania semantycznego: „${filters.semanticQuery}”`}
+                </h2>
                 <p className="muted">
                   {result.pagination.total} wyników, strona {result.pagination.page} z{" "}
                   {Math.max(result.pagination.totalPages, 1)}

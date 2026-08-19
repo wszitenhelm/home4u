@@ -4,6 +4,13 @@ import { describe, expect, it, vi } from "vitest";
 import { createListingService } from "@/modules/listings/service";
 import type { ListingRecord, ListingRepository } from "@/modules/listings/types";
 
+const { generateEmbedding } = vi.hoisted(() => ({ generateEmbedding: vi.fn() }));
+
+vi.mock("@/modules/listings/ai/embeddings", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/modules/listings/ai/embeddings")>()),
+  generateEmbedding,
+}));
+
 function createListingRecord(
   overrides: Partial<ListingRecord> = {},
 ): ListingRecord {
@@ -68,6 +75,8 @@ function createRepositoryMock(
   return {
     findPublicListings: vi.fn().mockResolvedValue({ total: 0, items: [] }),
     findPublicListingById: vi.fn().mockResolvedValue(null),
+    findPublishedListingEmbeddings: vi.fn().mockResolvedValue([]),
+    findPublicListingsByIds: vi.fn().mockResolvedValue([]),
     ...overrides,
   };
 }
@@ -147,5 +156,93 @@ describe("listing service", () => {
     });
     expect(result).not.toHaveProperty("rawPayload");
     expect(result).not.toHaveProperty("rawAttributes");
+  });
+
+  describe("semantic search", () => {
+    it("delegates to plain listing search when no semantic query is present", async () => {
+      const findPublicListings = vi.fn().mockResolvedValue({ total: 0, items: [] });
+      const service = createListingService(createRepositoryMock({ findPublicListings }));
+
+      await service.getSemanticListingIndex({
+        active: true,
+        page: 1,
+        pageSize: 20,
+        sort: "newest",
+      });
+
+      expect(findPublicListings).toHaveBeenCalledOnce();
+      expect(generateEmbedding).not.toHaveBeenCalled();
+    });
+
+    it("falls back to plain-text search when the embedding call is unavailable", async () => {
+      generateEmbedding.mockResolvedValueOnce(null);
+      const findPublicListings = vi.fn().mockResolvedValue({ total: 0, items: [] });
+      const service = createListingService(createRepositoryMock({ findPublicListings }));
+
+      await service.getSemanticListingIndex({
+        semanticQuery: "przytulne mieszkanie z balkonem",
+        active: true,
+        page: 1,
+        pageSize: 20,
+        sort: "newest",
+      });
+
+      expect(findPublicListings).toHaveBeenCalledWith(
+        expect.objectContaining({ q: "przytulne mieszkanie z balkonem", semanticQuery: undefined }),
+      );
+    });
+
+    it("falls back to plain-text search when there are no listing embeddings yet", async () => {
+      generateEmbedding.mockResolvedValueOnce([1, 0, 0]);
+      const findPublicListings = vi.fn().mockResolvedValue({ total: 0, items: [] });
+      const service = createListingService(
+        createRepositoryMock({
+          findPublicListings,
+          findPublishedListingEmbeddings: vi.fn().mockResolvedValue([]),
+        }),
+      );
+
+      await service.getSemanticListingIndex({
+        semanticQuery: "balkon",
+        active: true,
+        page: 1,
+        pageSize: 20,
+        sort: "newest",
+      });
+
+      expect(findPublicListings).toHaveBeenCalledOnce();
+    });
+
+    it("ranks listings by cosine similarity and filters out low-similarity matches", async () => {
+      generateEmbedding.mockResolvedValueOnce([1, 0, 0]);
+      const findPublicListingsByIds = vi.fn().mockResolvedValue([
+        createListingRecord({ id: "close-match" }),
+        createListingRecord({ id: "exact-match" }),
+      ]);
+      const service = createListingService(
+        createRepositoryMock({
+          findPublishedListingEmbeddings: vi.fn().mockResolvedValue([
+            { id: "exact-match", embedding: [1, 0, 0] },
+            { id: "close-match", embedding: [0.9, 0.1, 0] },
+            { id: "unrelated", embedding: [0, 1, 0] },
+          ]),
+          findPublicListingsByIds,
+        }),
+      );
+
+      const result = await service.getSemanticListingIndex({
+        semanticQuery: "balkon w centrum",
+        active: true,
+        page: 1,
+        pageSize: 20,
+        sort: "newest",
+      });
+
+      // Only exact-match and close-match clear the similarity threshold;
+      // the fully orthogonal "unrelated" vector (score 0) does not.
+      expect(findPublicListingsByIds).toHaveBeenCalledWith(["exact-match", "close-match"]);
+      expect(result.pagination.total).toBe(2);
+      expect(result.items.map((item) => item.id)).toEqual(["exact-match", "close-match"]);
+    });
   });
 });

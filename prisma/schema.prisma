@@ -57,6 +57,11 @@ model Listing {
   consistencyScore   Int?
   duplicateGroupId   String?           @db.VarChar(191)
   isPrimary          Boolean           @default(false)
+  // Semantic search: brute-force cosine similarity over these at ~100
+  // listings, no vector database needed at this scale.
+  embedding            Json?
+  embeddingModel       String?         @db.VarChar(191)
+  embeddingGeneratedAt DateTime?
   photos             ListingPhoto[]
   features           ListingFeature[]
   ingestionIssues    IngestionIssue[]

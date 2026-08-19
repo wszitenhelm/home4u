@@ -159,6 +159,10 @@ export const normalizedListingSchema = z.object({
 
 const listingSearchInputBaseSchema = z.object({
   q: optionalTrimmedStringSchema,
+  // Semantic search: a separate free-text mode from `q` (embedding-based
+  // similarity ranking rather than a `contains` filter), not combined with
+  // the other structured filters below.
+  semanticQuery: optionalTrimmedStringSchema,
   transactionType: z.preprocess(
     emptyStringToUndefined,
     z.enum(transactionTypes).optional(),
