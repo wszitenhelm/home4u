@@ -14,9 +14,16 @@ export interface ListingRepositoryListResult {
   readonly items: ListingRecord[];
 }
 
+export interface ListingEmbeddingRecord {
+  readonly id: string;
+  readonly embedding: number[];
+}
+
 export interface ListingRepository {
   findPublicListings(input: ListingSearchInput): Promise<ListingRepositoryListResult>;
   findPublicListingById(id: string): Promise<ListingRecord | null>;
+  findPublishedListingEmbeddings(): Promise<ListingEmbeddingRecord[]>;
+  findPublicListingsByIds(ids: readonly string[]): Promise<ListingRecord[]>;
 }
 
 export type ListingIndexResult = PaginatedListingResponse;

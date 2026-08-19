@@ -37,7 +37,7 @@ function mapListingPhoto(photo: ListingRecord["photos"][number]): ListingPhoto {
   };
 }
 
-function mapListingFeature(feature: ListingRecord["features"][number]): ListingFeature {
+export function mapListingFeature(feature: ListingRecord["features"][number]): ListingFeature {
   return {
     key: feature.key,
     valueType: feature.valueType,

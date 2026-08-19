@@ -3,6 +3,7 @@ import type { Prisma, PrismaClient } from "@prisma/client";
 import { prisma } from "@/db/prisma";
 import type { ListingFeatureKey } from "@/modules/listings/constants";
 import type {
+  ListingEmbeddingRecord,
   ListingRecord,
   ListingRepository,
   ListingRepositoryListResult,
@@ -173,6 +174,10 @@ function buildPublicListingWhere(input: ListingSearchInput): Prisma.ListingWhere
   return where;
 }
 
+function isEmbeddingVector(value: unknown): value is number[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "number");
+}
+
 function buildOrderBy(
   sort: ListingSearchInput["sort"],
 ): Prisma.ListingOrderByWithRelationInput[] {
@@ -223,6 +228,40 @@ export function createListingRepository(delegate: ListingDelegate = prisma.listi
       });
 
       return (listing as ListingRecord | null) ?? null;
+    },
+    async findPublishedListingEmbeddings(): Promise<ListingEmbeddingRecord[]> {
+      const rows = await delegate.findMany({
+        where: { publicationStatus: "PUBLISHED", isPrimary: true },
+        select: { id: true, embedding: true },
+      });
+      const records: ListingEmbeddingRecord[] = [];
+
+      for (const row of rows) {
+        if (isEmbeddingVector(row.embedding)) {
+          records.push({ id: row.id, embedding: row.embedding });
+        }
+      }
+
+      return records;
+    },
+    async findPublicListingsByIds(ids: readonly string[]): Promise<ListingRecord[]> {
+      if (ids.length === 0) {
+        return [];
+      }
+
+      const rows = await delegate.findMany({
+        where: {
+          id: { in: [...ids] },
+          publicationStatus: "PUBLISHED",
+          isPrimary: true,
+        },
+        select: publicListingSelect,
+      });
+      const rowsById = new Map(rows.map((row) => [row.id, row as ListingRecord]));
+
+      // findMany's `in` filter does not preserve input order, but callers
+      // rely on this order (e.g. semantic search's similarity ranking).
+      return ids.flatMap((id) => rowsById.get(id) ?? []);
     },
   };
 }

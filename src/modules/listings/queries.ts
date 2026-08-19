@@ -4,6 +4,7 @@ import type { ListingSearchInput } from "@/modules/listings/types";
 export function parseListingSearchParams(searchParams: URLSearchParams): ListingSearchInput {
   return listingSearchInputSchema.parse({
     q: searchParams.get("q") ?? undefined,
+    semanticQuery: searchParams.get("semanticQuery") ?? undefined,
     transactionType: searchParams.get("transactionType") ?? undefined,
     city: searchParams.getAll("city"),
     district: searchParams.get("district") ?? undefined,
@@ -57,6 +58,10 @@ export function buildListingSearchHref(input: Partial<ListingSearchInput>): stri
 
   if (input.q !== undefined) {
     searchParams.set("q", input.q);
+  }
+
+  if (input.semanticQuery !== undefined) {
+    searchParams.set("semanticQuery", input.semanticQuery);
   }
 
   if (input.transactionType !== undefined) {

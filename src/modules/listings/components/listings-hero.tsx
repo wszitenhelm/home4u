@@ -61,6 +61,17 @@ export function ListingsHero({ filters, naturalQuery }: ListingsHeroProps): Reac
           <button className="button-link button-link--primary listings-hero__submit" type="submit">
             Szukaj
           </button>
+          {/* Same query box, an additional way to search rather than a
+              replacement: formAction overrides the form's own action just
+              for this button, routing to embedding-based similarity search
+              instead of the structured/natural-language parser above. */}
+          <button
+            className="button-link button-link--secondary listings-hero__submit"
+            formAction="/api/listings/semantic-search"
+            type="submit"
+          >
+            Szukaj znaczeniowo
+          </button>
 
           <div aria-label="Miasta" className="listings-hero__cities" role="group">
             {cityOptions.map((city) => (
