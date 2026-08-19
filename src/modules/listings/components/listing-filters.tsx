@@ -94,48 +94,48 @@ export function ListingFilters({ filters, naturalQuery }: ListingFiltersProps): 
           </div>
         </div>
 
-        <div className="field field--wide">
-          <span>Udogodnienia</span>
-          <div className="field-checkbox-group">
-            <label className="field-checkbox">
-              <input
-                defaultChecked={filters.features?.includes("GARAGE") ?? false}
-                name="features"
-                type="checkbox"
-                value="GARAGE"
-              />
-              Garaż
-            </label>
+        <div className="filters-side-group">
+          <div className="field">
+            <span>Udogodnienia</span>
+            <div className="field-checkbox-group">
+              <label className="field-checkbox">
+                <input
+                  defaultChecked={filters.features?.includes("GARAGE") ?? false}
+                  name="features"
+                  type="checkbox"
+                  value="GARAGE"
+                />
+                Garaż
+              </label>
 
-            <label className="field-checkbox">
-              <input
-                defaultChecked={filters.features?.includes("PARKING") ?? false}
-                name="features"
-                type="checkbox"
-                value="PARKING"
-              />
-              Parking
-            </label>
+              <label className="field-checkbox">
+                <input
+                  defaultChecked={filters.features?.includes("PARKING") ?? false}
+                  name="features"
+                  type="checkbox"
+                  value="PARKING"
+                />
+                Parking
+              </label>
+            </div>
           </div>
+
+          <label className="field">
+            <span>Sortowanie</span>
+            <select defaultValue={filters.sort} name="sort">
+              <option value="newest">Najnowsze</option>
+              <option value="price_asc">Cena rosnąco</option>
+              <option value="price_desc">Cena malejąco</option>
+              <option value="area_asc">Metraż rosnąco</option>
+              <option value="area_desc">Metraż malejąco</option>
+            </select>
+          </label>
+
+          <button className="button-link button-link--primary" type="submit">
+            Zastosuj filtry
+          </button>
         </div>
-
-        <label className="field">
-          <span>Sortowanie</span>
-          <select defaultValue={filters.sort} name="sort">
-            <option value="newest">Najnowsze</option>
-            <option value="price_asc">Cena rosnąco</option>
-            <option value="price_desc">Cena malejąco</option>
-            <option value="area_asc">Metraż rosnąco</option>
-            <option value="area_desc">Metraż malejąco</option>
-          </select>
-        </label>
       </fieldset>
-
-      <div className="filters-card__actions">
-        <button className="button-link button-link--primary" type="submit">
-          Zastosuj filtry
-        </button>
-      </div>
     </form>
   );
 }
