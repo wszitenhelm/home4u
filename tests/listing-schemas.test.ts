@@ -51,6 +51,24 @@ describe("listing domain schemas", () => {
     expect(result.success).toBe(false);
   });
 
+  test("rejects an invalid floor range", () => {
+    const result = listingSearchInputSchema.safeParse({
+      minFloor: 5,
+      maxFloor: 1,
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  test("accepts ground floor as a valid floor filter", () => {
+    const result = listingSearchInputSchema.safeParse({
+      minFloor: 0,
+      maxFloor: 0,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
   test("parses a paginated listing response shape", () => {
     const parsed = paginatedListingResponseSchema.parse({
       items: [

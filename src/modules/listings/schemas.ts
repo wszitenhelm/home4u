@@ -35,6 +35,12 @@ const optionalPositiveNumberSchema = z.preprocess(
   emptyStringToUndefined,
   z.coerce.number().positive().optional(),
 );
+// Floor 0 is the ground floor ("parter"), so this allows 0 unlike
+// optionalPositiveIntSchema.
+const optionalNonNegativeIntSchema = z.preprocess(
+  emptyStringToUndefined,
+  z.coerce.number().int().min(0).optional(),
+);
 const optionalStringListSchema = z.preprocess((value) => {
   if (value === undefined || value === null) {
     return undefined;
@@ -163,6 +169,8 @@ const listingSearchInputBaseSchema = z.object({
   maxPrice: optionalPositiveIntSchema,
   minArea: optionalPositiveNumberSchema,
   maxArea: optionalPositiveNumberSchema,
+  minFloor: optionalNonNegativeIntSchema,
+  maxFloor: optionalNonNegativeIntSchema,
   rooms: optionalPositiveIntSchema,
   features: optionalFeatureListSchema,
   active: optionalBooleanSchema.default(true),
@@ -197,6 +205,18 @@ export const listingSearchInputSchema = listingSearchInputBaseSchema.superRefine
         code: z.ZodIssueCode.custom,
         message: "minArea cannot be greater than maxArea.",
         path: ["minArea"],
+      });
+    }
+
+    if (
+      value.minFloor !== undefined &&
+      value.maxFloor !== undefined &&
+      value.minFloor > value.maxFloor
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "minFloor cannot be greater than maxFloor.",
+        path: ["minFloor"],
       });
     }
   },

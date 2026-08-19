@@ -134,6 +134,13 @@ function buildPublicListingWhere(input: ListingSearchInput): Prisma.ListingWhere
     };
   }
 
+  if (input.minFloor !== undefined || input.maxFloor !== undefined) {
+    where.floor = {
+      gte: input.minFloor,
+      lte: input.maxFloor,
+    };
+  }
+
   if (input.features !== undefined) {
     for (const feature of input.features) {
       const textConditions: Prisma.ListingWhereInput[] = featureSearchTerms[feature].flatMap(

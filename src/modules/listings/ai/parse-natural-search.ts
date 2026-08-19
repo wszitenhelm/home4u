@@ -19,6 +19,8 @@ const naturalSearchResultSchema = z.object({
   maxPrice: z.number().int().positive().nullable(),
   minArea: z.number().positive().nullable(),
   maxArea: z.number().positive().nullable(),
+  minFloor: z.number().int().min(0).nullable(),
+  maxFloor: z.number().int().min(0).nullable(),
   rooms: z.number().int().positive().max(20).nullable(),
   features: z.array(z.enum(listingFeatureKeys)).max(listingFeatureKeys.length),
   q: z.string().trim().min(1).max(100).nullable(),
@@ -34,6 +36,8 @@ const emptyResult = (): NaturalSearchResult => ({
   maxPrice: null,
   minArea: null,
   maxArea: null,
+  minFloor: null,
+  maxFloor: null,
   rooms: null,
   features: [],
   q: null,
@@ -92,6 +96,41 @@ function parseArea(text: string): Pick<NaturalSearchResult, "minArea" | "maxArea
   return { minArea: Math.max(1, value - 5), maxArea: value + 5 };
 }
 
+function parseFloor(text: string): Pick<NaturalSearchResult, "minFloor" | "maxFloor"> {
+  // Ground floor never carries a digit ("parter"), so it's handled on its
+  // own rather than falling through to the numeric match below.
+  if (/\bparter\w*\b/.test(text)) {
+    return { minFloor: 0, maxFloor: 0 };
+  }
+
+  const floor = text.match(/(\d+)\s*\.?\s*pietr\w*/);
+
+  if (floor?.[1] === undefined) {
+    return { minFloor: null, maxFloor: null };
+  }
+
+  const value = Number(floor[1]);
+  const matchStart = floor.index ?? 0;
+  const prefix = text.slice(Math.max(0, matchStart - 18), matchStart);
+  const suffix = text.slice(matchStart + floor[0].length, matchStart + floor[0].length + 18);
+
+  if (
+    /\b(co najmniej|min(?:imum)?|od)\s*$/.test(prefix) ||
+    /^\s*(lub wyzej|i wyzej|wzwyz)\b/.test(suffix)
+  ) {
+    return { minFloor: value, maxFloor: null };
+  }
+
+  if (
+    /\b(do|maks(?:ymalnie)?|max)\s*$/.test(prefix) ||
+    /^\s*(lub nizej|i nizej)\b/.test(suffix)
+  ) {
+    return { minFloor: null, maxFloor: value };
+  }
+
+  return { minFloor: value, maxFloor: value };
+}
+
 function parsePrice(text: string): Pick<NaturalSearchResult, "minPrice" | "maxPrice"> {
   const amountPattern = "(\\d+(?:[.,]\\d+)?)\\s*(tys(?:\\.|iecy)?)?";
   const range = text.match(
@@ -147,6 +186,7 @@ export function parseNaturalSearchLocally(query: string): NaturalSearchResult {
     .map(([feature]) => feature);
   Object.assign(result, parseArea(text));
   Object.assign(result, parsePrice(text));
+  Object.assign(result, parseFloor(text));
 
   const rooms = text.match(/\b(\d+)\s*(?:pokoj\w*|rooms?)\b/);
   if (rooms?.[1] !== undefined) {
@@ -165,16 +205,17 @@ Dozwolone wartości:
 - cities: tylko "Kraków", "Warszawa", "Wrocław", "Gdańsk"
 - features: tylko ${listingFeatureKeys.map((key) => `"${key}"`).join(", ")}
 - district i q: string albo null
-- minPrice, maxPrice, minArea, maxArea, rooms: liczba albo null
+- minPrice, maxPrice, minArea, maxArea, minFloor, maxFloor, rooms: liczba albo null
 
 Zasady:
 - "wynająć", "wynajem", "do wynajęcia" oznacza RENT; "kupić", "sprzedaż" oznacza SALE.
 - Sama powierzchnia, np. "30 m2", oznacza zakres około tej wartości: minArea 25 i maxArea 35. Dla "od", "co najmniej" lub "do" ustaw jednostronną granicę.
+- "parter" oznacza piętro 0 (minFloor i maxFloor równe 0). Konkretne piętro, np. "4 piętro" lub "na 4 piętrze", ustawia minFloor i maxFloor na tę samą wartość. "od X piętra", "co najmniej X piętro" lub "X piętro lub wyżej" ustawia tylko minFloor. "do X piętra" lub "maksymalnie X piętro" ustawia tylko maxFloor. Nie zgaduj piętra dla zwrotów względnych jak "ostatnie piętro".
 - q zawiera wyłącznie istotną frazę, której nie da się zapisać w pozostałych polach. Ogólne słowa typu mieszkanie, lokal, oferta ustawiają q na null.
 - Nie zgaduj brakujących wymagań.
 
 Wymagany kształt:
-{"transactionType":null,"cities":[],"district":null,"minPrice":null,"maxPrice":null,"minArea":null,"maxArea":null,"rooms":null,"features":[],"q":null}
+{"transactionType":null,"cities":[],"district":null,"minPrice":null,"maxPrice":null,"minArea":null,"maxArea":null,"minFloor":null,"maxFloor":null,"rooms":null,"features":[],"q":null}
 
 Zapytanie użytkownika:
 ${query}`;
@@ -253,6 +294,8 @@ function mergeResults(
     maxPrice: ai.maxPrice ?? local.maxPrice,
     minArea: local.minArea ?? ai.minArea,
     maxArea: local.maxArea ?? ai.maxArea,
+    minFloor: local.minFloor ?? ai.minFloor,
+    maxFloor: local.maxFloor ?? ai.maxFloor,
     rooms: local.rooms ?? ai.rooms,
     features: [...new Set([...local.features, ...ai.features])],
     q: ai.q ?? local.q,
@@ -271,6 +314,8 @@ export async function parseNaturalListingSearch(query: string): Promise<Partial<
     maxPrice: parsed.maxPrice ?? undefined,
     minArea: parsed.minArea ?? undefined,
     maxArea: parsed.maxArea ?? undefined,
+    minFloor: parsed.minFloor ?? undefined,
+    maxFloor: parsed.maxFloor ?? undefined,
     rooms: parsed.rooms ?? undefined,
     features: parsed.features.length > 0 ? parsed.features : undefined,
     active: true,
