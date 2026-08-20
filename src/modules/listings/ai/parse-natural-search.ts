@@ -7,6 +7,7 @@ import {
 } from "@/modules/listings/constants";
 import type { ListingSearchInput } from "@/modules/listings/types";
 import { env } from "@/shared/env";
+import { logAiCall } from "@/shared/logging";
 
 const REQUEST_TIMEOUT_MS = 12_000;
 const supportedCities = ["Kraków", "Warszawa", "Wrocław", "Gdańsk"] as const;
@@ -234,6 +235,17 @@ async function parseWithGemini(query: string): Promise<NaturalSearchResult | nul
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const startedAt = Date.now();
+  const log = (success: boolean, detail?: string): void => {
+    logAiCall({
+      event: "parse_natural_search",
+      durationMs: Date.now() - startedAt,
+      success,
+      fallbackTriggered: !success,
+      model: env.GEMINI_MODEL,
+      detail,
+    });
+  };
 
   try {
     const response = await fetch(
@@ -254,7 +266,7 @@ async function parseWithGemini(query: string): Promise<NaturalSearchResult | nul
     );
 
     if (!response.ok) {
-      console.error("Natural listing search request failed", { status: response.status });
+      log(false, `HTTP ${response.status}`);
       return null;
     }
 
@@ -262,16 +274,21 @@ async function parseWithGemini(query: string): Promise<NaturalSearchResult | nul
     const text = payload.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("");
 
     if (text === undefined || text.trim().length === 0) {
+      log(false, "empty response text");
       return null;
     }
 
     const parsed = naturalSearchResultSchema.safeParse(JSON.parse(text));
-    return parsed.success ? parsed.data : null;
+
+    if (!parsed.success) {
+      log(false, "response failed validation");
+      return null;
+    }
+
+    log(true);
+    return parsed.data;
   } catch (error) {
-    console.error(
-      "Natural listing search parsing failed",
-      error instanceof Error ? error.message : error,
-    );
+    log(false, error instanceof Error ? error.message : String(error));
     return null;
   } finally {
     clearTimeout(timeout);

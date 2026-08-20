@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { env } from "@/shared/env";
+import { logAiCall } from "@/shared/logging";
 
 // Fixed dimensionality (rather than the model's larger native size) keeps
 // stored vectors small and comparisons cheap - plenty for ~100 listings
@@ -40,6 +41,17 @@ export async function generateEmbedding(
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const startedAt = Date.now();
+  const log = (success: boolean, detail?: string): void => {
+    logAiCall({
+      event: "generate_embedding",
+      durationMs: Date.now() - startedAt,
+      success,
+      fallbackTriggered: !success,
+      model: EMBEDDING_MODEL,
+      detail,
+    });
+  };
 
   try {
     const response = await fetch(
@@ -62,7 +74,7 @@ export async function generateEmbedding(
     );
 
     if (!response.ok) {
-      console.error("Embedding request failed", { status: response.status, taskType });
+      log(false, `HTTP ${response.status}`);
 
       return null;
     }
@@ -71,14 +83,16 @@ export async function generateEmbedding(
     const parsed = embedContentResponseSchema.safeParse(payload);
 
     if (!parsed.success) {
-      console.error("Embedding response failed validation", parsed.error.issues);
+      log(false, "response failed validation");
 
       return null;
     }
 
+    log(true);
+
     return parsed.data.embedding.values;
   } catch (error) {
-    console.error("Embedding generation failed", error instanceof Error ? error.message : error);
+    log(false, error instanceof Error ? error.message : String(error));
 
     return null;
   } finally {

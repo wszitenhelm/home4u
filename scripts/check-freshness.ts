@@ -86,119 +86,148 @@ async function checkListing(sourceUrl: string): Promise<ListingCheckOutcome> {
 
 async function main(): Promise<void> {
   const limit = parseLimit(process.argv.slice(2));
-  const listings = await prisma.listing.findMany({
-    where: {
-      source: "SELECTED_MARKETPLACE",
-      publicationStatus: "PUBLISHED",
-      isPrimary: true,
-    },
-    orderBy: { id: "asc" },
-    take: limit,
-    select: {
-      id: true,
-      sourceUrl: true,
-      photos: { select: { url: true }, orderBy: { position: "asc" } },
-    },
+  const run = await prisma.freshnessCheckRun.create({
+    data: { startedAt: new Date(), status: "RUNNING" },
   });
 
   let expired = 0;
   let live = 0;
   let photosUpdated = 0;
   let failed = 0;
+  let crashed = false;
 
-  for (let offset = 0; offset < listings.length; offset += BATCH_SIZE) {
-    const batch = listings.slice(offset, offset + BATCH_SIZE);
+  try {
+    const listings = await prisma.listing.findMany({
+      where: {
+        source: "SELECTED_MARKETPLACE",
+        publicationStatus: "PUBLISHED",
+        isPrimary: true,
+      },
+      orderBy: { id: "asc" },
+      take: limit,
+      select: {
+        id: true,
+        sourceUrl: true,
+        photos: { select: { url: true }, orderBy: { position: "asc" } },
+      },
+    });
 
-    await Promise.all(
-      batch.map(async (listing) => {
-        try {
-          const outcome = await checkListing(listing.sourceUrl);
+    for (let offset = 0; offset < listings.length; offset += BATCH_SIZE) {
+      const batch = listings.slice(offset, offset + BATCH_SIZE);
 
-          if (outcome.status === "EXPIRED") {
-            // Status change only, matching the rest of the app: nothing is
-            // ever hard-deleted here.
+      await Promise.all(
+        batch.map(async (listing) => {
+          try {
+            const outcome = await checkListing(listing.sourceUrl);
+
+            if (outcome.status === "EXPIRED") {
+              // Status change only, matching the rest of the app: nothing is
+              // ever hard-deleted here.
+              await prisma.listing.update({
+                where: { id: listing.id },
+                data: { publicationStatus: "EXPIRED" },
+              });
+              expired += 1;
+              return;
+            }
+
+            live += 1;
+
+            if (outcome.photos === null) {
+              return;
+            }
+
+            const currentPhotoUrls = listing.photos.map((photo) => photo.url);
+
+            if (hasSameGallery(outcome.photos, currentPhotoUrls)) {
+              return;
+            }
+
+            // A seller can swap photos on Morizon's CDN without changing the
+            // listing itself, which leaves stale, now-404ing URLs behind if
+            // nothing re-checks them.
             await prisma.listing.update({
               where: { id: listing.id },
-              data: { publicationStatus: "EXPIRED" },
-            });
-            expired += 1;
-            return;
-          }
-
-          live += 1;
-
-          if (outcome.photos === null) {
-            return;
-          }
-
-          const currentPhotoUrls = listing.photos.map((photo) => photo.url);
-
-          if (hasSameGallery(outcome.photos, currentPhotoUrls)) {
-            return;
-          }
-
-          // A seller can swap photos on Morizon's CDN without changing the
-          // listing itself, which leaves stale, now-404ing URLs behind if
-          // nothing re-checks them.
-          await prisma.listing.update({
-            where: { id: listing.id },
-            data: {
-              photos: {
-                deleteMany: {},
-                create: outcome.photos.map((url, position) => ({
-                  url,
-                  position,
-                  isPrimary: position === 0,
-                })),
+              data: {
+                photos: {
+                  deleteMany: {},
+                  create: outcome.photos.map((url, position) => ({
+                    url,
+                    position,
+                    isPrimary: position === 0,
+                  })),
+                },
               },
-            },
-          });
-          photosUpdated += 1;
-        } catch (error) {
-          // A transient fetch failure doesn't confirm removal, so the
-          // listing is left untouched and will be re-checked on the next
-          // scheduled run rather than retried within this one.
-          failed += 1;
-          console.error("Freshness check failed for listing", {
-            listingId: listing.id,
-            sourceUrl: listing.sourceUrl,
-            message: error instanceof Error ? error.message : String(error),
-          });
-        }
-      }),
-    );
+            });
+            photosUpdated += 1;
+          } catch (error) {
+            // A transient fetch failure doesn't confirm removal, so the
+            // listing is left untouched and will be re-checked on the next
+            // scheduled run rather than retried within this one.
+            failed += 1;
+            console.error("Freshness check failed for listing", {
+              listingId: listing.id,
+              sourceUrl: listing.sourceUrl,
+              message: error instanceof Error ? error.message : String(error),
+            });
+          }
+        }),
+      );
+
+      // Persisted after every batch (not just at the end) so a run record
+      // reflects real progress even if the process is killed outright and
+      // never reaches the try/finally below.
+      await prisma.freshnessCheckRun.update({
+        where: { id: run.id },
+        data: { listingsChecked: expired + live, listingsExpired: expired, failedCount: failed },
+      });
+
+      console.info(
+        JSON.stringify({
+          type: "freshness-check-progress",
+          processed: Math.min(offset + batch.length, listings.length),
+          total: listings.length,
+          expired,
+          live,
+          photosUpdated,
+          failed,
+        }),
+      );
+
+      if (offset + batch.length < listings.length) {
+        await wait(BATCH_DELAY_MS);
+      }
+    }
 
     console.info(
-      JSON.stringify({
-        type: "freshness-check-progress",
-        processed: Math.min(offset + batch.length, listings.length),
-        total: listings.length,
-        expired,
-        live,
-        photosUpdated,
-        failed,
-      }),
+      JSON.stringify(
+        {
+          type: "freshness-check",
+          checked: listings.length,
+          expired,
+          live,
+          photosUpdated,
+          failed,
+        },
+        null,
+        2,
+      ),
     );
-
-    if (offset + batch.length < listings.length) {
-      await wait(BATCH_DELAY_MS);
-    }
-  }
-
-  console.info(
-    JSON.stringify(
-      {
-        type: "freshness-check",
-        checked: listings.length,
-        expired,
-        live,
-        photosUpdated,
-        failed,
+  } catch (error) {
+    crashed = true;
+    throw error;
+  } finally {
+    await prisma.freshnessCheckRun.update({
+      where: { id: run.id },
+      data: {
+        finishedAt: new Date(),
+        status: crashed ? "FAILED" : failed > 0 ? "COMPLETED_WITH_ERRORS" : "COMPLETED",
+        listingsChecked: expired + live,
+        listingsExpired: expired,
+        failedCount: failed,
       },
-      null,
-      2,
-    ),
-  );
+    });
+  }
 }
 
 main()
