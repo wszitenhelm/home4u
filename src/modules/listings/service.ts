@@ -73,12 +73,17 @@ export function createListingService(repository: ListingRepository = listingRepo
         return fallback();
       }
 
-      const candidates = await repository.findPublishedListingEmbeddings();
+      const candidates = await repository.findPublishedListingEmbeddings(input);
 
       if (candidates.length === 0) {
-        console.error("Semantic search has no listing embeddings yet, falling back to text search.", {
-          query,
-        });
+        // Two indistinguishable causes here (no embeddings generated yet vs.
+        // the current filters legitimately matching zero listings) - either
+        // way the fallback below applies the same filters and correctly
+        // resolves to an empty result, so it's safe not to tell them apart.
+        console.error(
+          "Semantic search found no candidate listings for the current filters, falling back to text search.",
+          { query },
+        );
 
         return fallback();
       }

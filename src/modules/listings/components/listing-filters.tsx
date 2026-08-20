@@ -15,6 +15,13 @@ export function ListingFilters({ filters, naturalQuery }: ListingFiltersProps): 
       {naturalQuery !== undefined ? (
         <input name="previousNaturalQuery" type="hidden" value={naturalQuery} />
       ) : null}
+      {/* This form always posts to natural-search, which passes semanticQuery
+          straight through as just another explicit filter (it never tries
+          to parse it) - so narrowing a semantic search's results here keeps
+          you in semantic mode instead of silently falling back to it. */}
+      {filters.semanticQuery !== undefined ? (
+        <input name="semanticQuery" type="hidden" value={filters.semanticQuery} />
+      ) : null}
       {/* Transaction type and city are chosen in the hero above; preserve
           them here so applying the rest of these filters does not reset
           that selection. */}
