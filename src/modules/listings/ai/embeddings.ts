@@ -133,8 +133,19 @@ export function buildListingEmbeddingText(input: {
   readonly title: string | null;
   readonly descriptionClean: string | null;
   readonly featureLines: readonly string[];
+  // Style/renovation state (e.g. "Wysoki standard", "Do remontu"). Worth its
+  // own explicit sentence rather than relying on descriptionClean alone: a
+  // query like "nowoczesne mieszkanie" (modern flat) needs a direct signal
+  // to rank a dated flat below a renovated one - the surrounding listing
+  // boilerplate ("Do wynajęcia mieszkanie...") is otherwise near-identical
+  // across the whole corpus and dominates the similarity score.
+  readonly condition: string | null;
 }): string {
-  const parts = [input.title, input.descriptionClean, ...input.featureLines].filter(
+  const conditionLine =
+    input.condition !== null && input.condition.trim().length > 0
+      ? `Stan: ${input.condition}.`
+      : null;
+  const parts = [input.title, input.descriptionClean, conditionLine, ...input.featureLines].filter(
     (part): part is string => part !== null && part.trim().length > 0,
   );
 

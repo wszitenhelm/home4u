@@ -54,6 +54,7 @@ describe("buildListingEmbeddingText", () => {
       buildListingEmbeddingText({
         title: "Mieszkanie w centrum",
         descriptionClean: "Jasne, przestronne wnętrze.",
+        condition: null,
         featureLines: ["Balkon", "Winda"],
       }),
     ).toBe("Mieszkanie w centrum. Jasne, przestronne wnętrze.. Balkon. Winda");
@@ -64,6 +65,7 @@ describe("buildListingEmbeddingText", () => {
       buildListingEmbeddingText({
         title: "Mieszkanie",
         descriptionClean: null,
+        condition: null,
         featureLines: [],
       }),
     ).toBe("Mieszkanie");
@@ -71,8 +73,39 @@ describe("buildListingEmbeddingText", () => {
 
   it("returns an empty string when there is nothing to embed", () => {
     expect(
-      buildListingEmbeddingText({ title: null, descriptionClean: null, featureLines: [] }),
+      buildListingEmbeddingText({
+        title: null,
+        descriptionClean: null,
+        condition: null,
+        featureLines: [],
+      }),
     ).toBe("");
+  });
+
+  // Regression test for a real bad match: a query like "nowoczesne
+  // mieszkanie" (modern flat) needs this signal explicitly, because most
+  // listing descriptions share nearly identical boilerplate regardless of
+  // actual condition.
+  it("includes the condition as its own sentence, between description and features", () => {
+    expect(
+      buildListingEmbeddingText({
+        title: "Mieszkanie w centrum",
+        descriptionClean: "Jasne, przestronne wnętrze.",
+        condition: "Wysoki standard",
+        featureLines: ["Balkon"],
+      }),
+    ).toBe("Mieszkanie w centrum. Jasne, przestronne wnętrze.. Stan: Wysoki standard.. Balkon");
+  });
+
+  it("skips a blank condition", () => {
+    expect(
+      buildListingEmbeddingText({
+        title: "Mieszkanie",
+        descriptionClean: null,
+        condition: "   ",
+        featureLines: [],
+      }),
+    ).toBe("Mieszkanie");
   });
 });
 

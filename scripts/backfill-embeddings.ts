@@ -59,6 +59,7 @@ async function main(): Promise<void> {
         id: true,
         title: true,
         descriptionClean: true,
+        condition: true,
         features: {
           select: {
             key: true,
@@ -83,6 +84,7 @@ async function main(): Promise<void> {
           const text = buildListingEmbeddingText({
             title: listing.title,
             descriptionClean: listing.descriptionClean,
+            condition: listing.condition,
             featureLines,
           });
 
