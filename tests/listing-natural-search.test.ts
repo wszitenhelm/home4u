@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { parseNaturalSearchLocally } from "@/modules/listings/ai/parse-natural-search";
 
@@ -78,5 +78,128 @@ describe("natural listing search", () => {
       minFloor: 0,
       maxFloor: 0,
     });
+  });
+});
+
+// These tests must never hit the real Gemini API, even though the local
+// .env used by the test setup may contain a real key: @/shared/env is
+// mocked per-test so behavior is independent of whatever is actually in the
+// developer's local .env, and global.fetch is mocked/spied so no network
+// call can occur even if that mock were wrong. Same convention as
+// tests/ingestion-ai-summary.test.ts.
+describe("parseNaturalListingSearch (Gemini call site)", () => {
+  // resetModules runs both before and after: the module under test was
+  // already loaded once by parseNaturalSearchLocally's static import above,
+  // so the very first test here also needs a fresh module graph for its
+  // env mock to take effect, not just the tests after it.
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.resetModules();
+    vi.unstubAllGlobals();
+  });
+
+  it("never calls fetch when no API key is configured", async () => {
+    vi.doMock("@/shared/env", () => ({
+      env: { GEMINI_API_KEY: undefined, GEMINI_MODEL: "gemini-2.5-flash" },
+    }));
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const { parseNaturalListingSearch } = await import(
+      "@/modules/listings/ai/parse-natural-search"
+    );
+
+    await parseNaturalListingSearch("mieszkanie w Krakowie");
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("logs one structured success event on a well-formed response", async () => {
+    vi.doMock("@/shared/env", () => ({
+      env: { GEMINI_API_KEY: "test-key", GEMINI_MODEL: "gemini-2.5-flash" },
+    }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            candidates: [
+              {
+                content: {
+                  parts: [
+                    {
+                      text: JSON.stringify({
+                        transactionType: "RENT",
+                        cities: ["Kraków"],
+                        district: null,
+                        minPrice: null,
+                        maxPrice: null,
+                        minArea: null,
+                        maxArea: null,
+                        minFloor: null,
+                        maxFloor: null,
+                        rooms: null,
+                        features: [],
+                        q: null,
+                      }),
+                    },
+                  ],
+                },
+              },
+            ],
+          }),
+      }),
+    );
+    const infoSpy = vi.spyOn(console, "info").mockImplementation(() => undefined);
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const { parseNaturalListingSearch } = await import(
+      "@/modules/listings/ai/parse-natural-search"
+    );
+
+    await parseNaturalListingSearch("mieszkanie w Krakowie");
+
+    expect(errorSpy).not.toHaveBeenCalled();
+    expect(infoSpy).toHaveBeenCalledTimes(1);
+    expect(infoSpy).toHaveBeenCalledWith(
+      "ai-call",
+      expect.objectContaining({
+        event: "parse_natural_search",
+        success: true,
+        fallbackTriggered: false,
+        model: "gemini-2.5-flash",
+        durationMs: expect.any(Number),
+      }),
+    );
+  });
+
+  it("logs one structured failure event when the HTTP response is not ok", async () => {
+    vi.doMock("@/shared/env", () => ({
+      env: { GEMINI_API_KEY: "test-key", GEMINI_MODEL: "gemini-2.5-flash" },
+    }));
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 500 }));
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const { parseNaturalListingSearch } = await import(
+      "@/modules/listings/ai/parse-natural-search"
+    );
+
+    await parseNaturalListingSearch("mieszkanie w Krakowie");
+
+    expect(errorSpy).toHaveBeenCalledTimes(1);
+    expect(errorSpy).toHaveBeenCalledWith(
+      "ai-call",
+      expect.objectContaining({
+        event: "parse_natural_search",
+        success: false,
+        fallbackTriggered: true,
+        model: "gemini-2.5-flash",
+        detail: "HTTP 500",
+      }),
+    );
   });
 });

@@ -229,9 +229,15 @@ export function createListingRepository(delegate: ListingDelegate = prisma.listi
 
       return (listing as ListingRecord | null) ?? null;
     },
-    async findPublishedListingEmbeddings(): Promise<ListingEmbeddingRecord[]> {
+    async findPublishedListingEmbeddings(
+      input: ListingSearchInput,
+    ): Promise<ListingEmbeddingRecord[]> {
+      // Same where-clause as findPublicListings (transactionType/city/price/
+      // etc.) - buildPublicListingWhere ignores fields it doesn't recognize
+      // (q, semanticQuery, pagination), so passing the full input through is
+      // safe.
       const rows = await delegate.findMany({
-        where: { publicationStatus: "PUBLISHED", isPrimary: true },
+        where: buildPublicListingWhere(input),
         select: { id: true, embedding: true },
       });
       const records: ListingEmbeddingRecord[] = [];

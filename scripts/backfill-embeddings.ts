@@ -37,106 +37,141 @@ async function main(): Promise<void> {
   // regenerates every published listing, e.g. after switching models.
   const force = args.includes("--force");
 
-  const listings = await prisma.listing.findMany({
-    where: {
-      publicationStatus: "PUBLISHED",
-      isPrimary: true,
-      ...(force ? {} : { embedding: { equals: Prisma.DbNull } }),
-    },
-    orderBy: { id: "asc" },
-    take: limit,
-    select: {
-      id: true,
-      title: true,
-      descriptionClean: true,
-      features: {
-        select: {
-          key: true,
-          valueType: true,
-          booleanValue: true,
-          numberValue: true,
-          textValue: true,
-          rawValue: true,
-        },
-      },
-    },
+  const run = await prisma.embeddingBackfillRun.create({
+    data: { startedAt: new Date(), status: "RUNNING" },
   });
 
   let updated = 0;
   let skipped = 0;
   let failed = 0;
+  let crashed = false;
 
-  for (let offset = 0; offset < listings.length; offset += BATCH_SIZE) {
-    const batch = listings.slice(offset, offset + BATCH_SIZE);
-
-    await Promise.all(
-      batch.map(async (listing) => {
-        const featureLines = listing.features.map((feature) =>
-          formatFeatureValue(mapListingFeature(feature)),
-        );
-        const text = buildListingEmbeddingText({
-          title: listing.title,
-          descriptionClean: listing.descriptionClean,
-          featureLines,
-        });
-
-        if (text.trim().length === 0) {
-          skipped += 1;
-          console.error("Skipping listing with no embeddable text", { listingId: listing.id });
-
-          return;
-        }
-
-        const embedding = await generateEmbedding(text, "RETRIEVAL_DOCUMENT");
-
-        if (embedding === null) {
-          failed += 1;
-          console.error("Embedding generation failed for listing", { listingId: listing.id });
-
-          return;
-        }
-
-        await prisma.listing.update({
-          where: { id: listing.id },
-          data: {
-            embedding: embedding as Prisma.InputJsonValue,
-            embeddingModel: EMBEDDING_MODEL,
-            embeddingGeneratedAt: new Date(),
+  try {
+    const listings = await prisma.listing.findMany({
+      where: {
+        publicationStatus: "PUBLISHED",
+        isPrimary: true,
+        ...(force ? {} : { embedding: { equals: Prisma.DbNull } }),
+      },
+      orderBy: { id: "asc" },
+      take: limit,
+      select: {
+        id: true,
+        title: true,
+        descriptionClean: true,
+        condition: true,
+        features: {
+          select: {
+            key: true,
+            valueType: true,
+            booleanValue: true,
+            numberValue: true,
+            textValue: true,
+            rawValue: true,
           },
-        });
-        updated += 1;
-      }),
-    );
+        },
+      },
+    });
+
+    for (let offset = 0; offset < listings.length; offset += BATCH_SIZE) {
+      const batch = listings.slice(offset, offset + BATCH_SIZE);
+
+      await Promise.all(
+        batch.map(async (listing) => {
+          const featureLines = listing.features.map((feature) =>
+            formatFeatureValue(mapListingFeature(feature)),
+          );
+          const text = buildListingEmbeddingText({
+            title: listing.title,
+            descriptionClean: listing.descriptionClean,
+            condition: listing.condition,
+            featureLines,
+          });
+
+          if (text.trim().length === 0) {
+            skipped += 1;
+            console.error("Skipping listing with no embeddable text", { listingId: listing.id });
+
+            return;
+          }
+
+          const embedding = await generateEmbedding(text, "RETRIEVAL_DOCUMENT");
+
+          if (embedding === null) {
+            failed += 1;
+            console.error("Embedding generation failed for listing", { listingId: listing.id });
+
+            return;
+          }
+
+          await prisma.listing.update({
+            where: { id: listing.id },
+            data: {
+              embedding: embedding as Prisma.InputJsonValue,
+              embeddingModel: EMBEDDING_MODEL,
+              embeddingGeneratedAt: new Date(),
+            },
+          });
+          updated += 1;
+        }),
+      );
+
+      // Persisted after every batch (not just at the end) so a run record
+      // reflects real progress even if the process is killed outright and
+      // never reaches the try/finally below.
+      await prisma.embeddingBackfillRun.update({
+        where: { id: run.id },
+        data: {
+          listingsProcessed: updated + skipped + failed,
+          embeddingsGenerated: updated,
+          failedCount: failed,
+        },
+      });
+
+      console.info(
+        JSON.stringify({
+          type: "embeddings-backfill-progress",
+          processed: Math.min(offset + batch.length, listings.length),
+          total: listings.length,
+          updated,
+          skipped,
+          failed,
+        }),
+      );
+
+      if (offset + batch.length < listings.length) {
+        await wait(BATCH_DELAY_MS);
+      }
+    }
 
     console.info(
-      JSON.stringify({
-        type: "embeddings-backfill-progress",
-        processed: Math.min(offset + batch.length, listings.length),
-        total: listings.length,
-        updated,
-        skipped,
-        failed,
-      }),
+      JSON.stringify(
+        {
+          type: "embeddings-backfill",
+          selected: listings.length,
+          updated,
+          skipped,
+          failed,
+        },
+        null,
+        2,
+      ),
     );
-
-    if (offset + batch.length < listings.length) {
-      await wait(BATCH_DELAY_MS);
-    }
-  }
-
-  console.info(
-    JSON.stringify(
-      {
-        type: "embeddings-backfill",
-        selected: listings.length,
-        updated,
-        skipped,
-        failed,
+  } catch (error) {
+    crashed = true;
+    throw error;
+  } finally {
+    await prisma.embeddingBackfillRun.update({
+      where: { id: run.id },
+      data: {
+        finishedAt: new Date(),
+        status: crashed ? "FAILED" : failed > 0 ? "COMPLETED_WITH_ERRORS" : "COMPLETED",
+        listingsProcessed: updated + skipped + failed,
+        embeddingsGenerated: updated,
+        failedCount: failed,
       },
-      null,
-      2,
-    ),
-  );
+    });
+  }
 }
 
 main()

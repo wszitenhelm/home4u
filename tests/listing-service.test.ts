@@ -244,5 +244,35 @@ describe("listing service", () => {
       expect(result.pagination.total).toBe(2);
       expect(result.items.map((item) => item.id)).toEqual(["exact-match", "close-match"]);
     });
+
+    it("ranks only within the currently active structured filters, not the whole catalog", async () => {
+      generateEmbedding.mockResolvedValueOnce([1, 0, 0]);
+      const findPublishedListingEmbeddings = vi.fn().mockResolvedValue([]);
+      const service = createListingService(
+        createRepositoryMock({
+          findPublishedListingEmbeddings,
+          findPublicListings: vi.fn().mockResolvedValue({ total: 0, items: [] }),
+        }),
+      );
+
+      await service.getSemanticListingIndex({
+        semanticQuery: "balkon w centrum",
+        transactionType: "RENT",
+        city: ["Kraków"],
+        maxPrice: 4000,
+        active: true,
+        page: 1,
+        pageSize: 20,
+        sort: "newest",
+      });
+
+      expect(findPublishedListingEmbeddings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          transactionType: "RENT",
+          city: ["Kraków"],
+          maxPrice: 4000,
+        }),
+      );
+    });
   });
 });

@@ -149,6 +149,35 @@ model IngestionIssue {
   @@index([listingId], map: "ingestion_issues_listingId_idx")
 }
 
+// Observability for the two periodic maintenance scripts, mirroring
+// ImportRun's shape (id, startedAt, finishedAt, status, per-run counts,
+// createdAt) without literally reusing it - these jobs aren't imports.
+model FreshnessCheckRun {
+  id              String              @id @default(cuid())
+  startedAt       DateTime
+  finishedAt      DateTime?
+  status          MaintenanceRunStatus
+  listingsChecked Int                 @default(0)
+  listingsExpired Int                 @default(0)
+  failedCount     Int                 @default(0)
+  createdAt       DateTime            @default(now())
+
+  @@index([startedAt], map: "freshness_check_runs_startedAt_idx")
+}
+
+model EmbeddingBackfillRun {
+  id                  String              @id @default(cuid())
+  startedAt           DateTime
+  finishedAt          DateTime?
+  status              MaintenanceRunStatus
+  listingsProcessed   Int                 @default(0)
+  embeddingsGenerated Int                 @default(0)
+  failedCount         Int                 @default(0)
+  createdAt           DateTime            @default(now())
+
+  @@index([startedAt], map: "embedding_backfill_runs_startedAt_idx")
+}
+
 enum Marketplace {
   SELECTED_MARKETPLACE
 }
@@ -192,6 +221,15 @@ enum IngestionResult {
 }
 
 enum ImportRunStatus {
+  RUNNING
+  COMPLETED
+  COMPLETED_WITH_ERRORS
+  FAILED
+}
+
+// Shared by FreshnessCheckRun and EmbeddingBackfillRun - same lifecycle as
+// ImportRunStatus, kept as its own enum since these runs aren't imports.
+enum MaintenanceRunStatus {
   RUNNING
   COMPLETED
   COMPLETED_WITH_ERRORS

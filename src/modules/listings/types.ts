@@ -22,7 +22,10 @@ export interface ListingEmbeddingRecord {
 export interface ListingRepository {
   findPublicListings(input: ListingSearchInput): Promise<ListingRepositoryListResult>;
   findPublicListingById(id: string): Promise<ListingRecord | null>;
-  findPublishedListingEmbeddings(): Promise<ListingEmbeddingRecord[]>;
+  // Filtered by the same structured criteria (transactionType, city, price,
+  // etc.) as findPublicListings, so ranking by similarity happens within the
+  // listings the user actually asked for rather than the whole catalog.
+  findPublishedListingEmbeddings(input: ListingSearchInput): Promise<ListingEmbeddingRecord[]>;
   findPublicListingsByIds(ids: readonly string[]): Promise<ListingRecord[]>;
 }
 

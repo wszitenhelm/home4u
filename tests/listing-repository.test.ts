@@ -214,6 +214,36 @@ describe("listing repository", () => {
     });
   });
 
+  it("filters candidate embeddings by the same structured criteria as findPublicListings", async () => {
+    const findMany = vi.fn().mockResolvedValue([]);
+    const repository = createListingRepository({
+      count: vi.fn(),
+      findMany,
+      findFirst: vi.fn(),
+    } as never);
+
+    await repository.findPublishedListingEmbeddings({
+      active: true,
+      transactionType: "RENT",
+      city: ["Kraków"],
+      maxPrice: 4000,
+      page: 1,
+      pageSize: 20,
+      sort: "newest",
+    });
+
+    expect(findMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        publicationStatus: "PUBLISHED",
+        isPrimary: true,
+        transactionType: "RENT",
+        city: { in: ["Kraków"] },
+        priceAmount: { gte: undefined, lte: 4000 },
+      }),
+      select: { id: true, embedding: true },
+    });
+  });
+
   it("hides rejected, needs-review, and duplicate variants in detail lookup", async () => {
     const findFirst = vi.fn().mockResolvedValue(null);
     const repository = createListingRepository({

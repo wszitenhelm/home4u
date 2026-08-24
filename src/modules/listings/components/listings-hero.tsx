@@ -20,6 +20,43 @@ export function ListingsHero({ filters, naturalQuery }: ListingsHeroProps): Reac
         </p>
 
         <form className="listings-hero__search" action="/api/listings/natural-search" method="get">
+          {/* A GET form submission replaces the current URL's query string
+              entirely with just this form's fields, so every other active
+              filter has to be mirrored here as a hidden input or it's
+              silently dropped by either submit button - same pattern as
+              ListingFilters preserving transactionType/city/features. */}
+          {filters.transactionType !== undefined ? (
+            <input name="transactionType" type="hidden" value={filters.transactionType} />
+          ) : null}
+          {filters.city?.map((city) => <input key={city} name="city" type="hidden" value={city} />)}
+          {filters.district !== undefined ? (
+            <input name="district" type="hidden" value={filters.district} />
+          ) : null}
+          {filters.rooms !== undefined ? (
+            <input name="rooms" type="hidden" value={filters.rooms} />
+          ) : null}
+          {filters.minPrice !== undefined ? (
+            <input name="minPrice" type="hidden" value={filters.minPrice} />
+          ) : null}
+          {filters.maxPrice !== undefined ? (
+            <input name="maxPrice" type="hidden" value={filters.maxPrice} />
+          ) : null}
+          {filters.minArea !== undefined ? (
+            <input name="minArea" type="hidden" value={filters.minArea} />
+          ) : null}
+          {filters.maxArea !== undefined ? (
+            <input name="maxArea" type="hidden" value={filters.maxArea} />
+          ) : null}
+          {filters.minFloor !== undefined ? (
+            <input name="minFloor" type="hidden" value={filters.minFloor} />
+          ) : null}
+          {filters.maxFloor !== undefined ? (
+            <input name="maxFloor" type="hidden" value={filters.maxFloor} />
+          ) : null}
+          {filters.features?.map((feature) => (
+            <input key={feature} name="features" type="hidden" value={feature} />
+          ))}
+          {filters.sort !== "newest" ? <input name="sort" type="hidden" value={filters.sort} /> : null}
 
           <div
             aria-label="Typ transakcji"
