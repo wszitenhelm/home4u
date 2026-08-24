@@ -18,9 +18,10 @@ export async function ListingsView({
   try {
     const rawSearchParams = await searchParams;
     const filters = searchParamsToInput(rawSearchParams);
-    // Semantic search is a distinct, additional entry point (embedding-based
-    // similarity ranking) alongside the structured filters and
-    // natural-language search below, not combined with either for now.
+    // semanticQuery is set whenever natural-search parsed out a leftover
+    // fragment it couldn't map to a structured field (see
+    // natural-search/route.ts) - ranking by meaning within the already-
+    // applied structured filters, rather than a separate search mode.
     const result =
       filters.semanticQuery === undefined
         ? await getListingIndex(filters)
@@ -44,9 +45,13 @@ export async function ListingsView({
               <div>
                 <p className="eyebrow">Oferty mieszkań</p>
                 <h2>
-                  {filters.semanticQuery === undefined
+                  {/* naturalQuery is the user's full original text; semanticQuery
+                      may just be the leftover fragment natural-search parsed out of
+                      it (see natural-search/route.ts), so the heading is always
+                      keyed off the former. */}
+                  {naturalQuery === undefined
                     ? "Przeglądaj aktywne ogłoszenia"
-                    : `Wyniki wyszukiwania semantycznego: „${filters.semanticQuery}”`}
+                    : `Wyniki wyszukiwania: „${naturalQuery}”`}
                 </h2>
                 <p className="muted">
                   {result.pagination.total} wyników, strona {result.pagination.page} z{" "}
