@@ -109,6 +109,53 @@ describe("GET /api/listings/natural-search", () => {
     expect(location).toContain("naturalQuery=chce+");
   });
 
+  it("runs semantic ranking on the full original query when a leftover fragment exists, not q", async () => {
+    vi.doMock("@/modules/listings/ai/parse-natural-search", () => ({
+      parseNaturalListingSearch: vi.fn().mockResolvedValue({
+        transactionType: "RENT",
+        city: ["Kraków"],
+        q: "nowoczesne",
+      }),
+    }));
+
+    const { GET } = await import("@/app/api/listings/natural-search/route");
+    const response = await GET(
+      new Request(
+        "http://localhost/api/listings/natural-search?query=chce%20wynaj%C4%85%C4%87%20nowoczesne%20mieszkanie%20w%20Krakowie",
+      ),
+    );
+    const location = response.headers.get("location");
+
+    // The full sentence, not the bare "nowoczesne" fragment: a single
+    // leftover word embeds too weakly to clear the similarity threshold.
+    expect(location).toContain(
+      "semanticQuery=chce+wynaj%C4%85%C4%87+nowoczesne+mieszkanie+w+Krakowie",
+    );
+    expect(location).not.toMatch(/[?&]q=/);
+  });
+
+  it("does not trigger semantic ranking when the query fully maps to structured filters", async () => {
+    vi.doMock("@/modules/listings/ai/parse-natural-search", () => ({
+      parseNaturalListingSearch: vi.fn().mockResolvedValue({
+        transactionType: "RENT",
+        city: ["Kraków"],
+        rooms: 3,
+        q: undefined,
+      }),
+    }));
+
+    const { GET } = await import("@/app/api/listings/natural-search/route");
+    const response = await GET(
+      new Request(
+        "http://localhost/api/listings/natural-search?query=3%20pokoje%20w%20Krakowie%20na%20wynajem",
+      ),
+    );
+    const location = response.headers.get("location");
+
+    expect(location).not.toMatch(/[?&]semanticQuery=/);
+    expect(location).toContain("rooms=3");
+  });
+
   it("preserves explicit filters when the natural query is blank", async () => {
     const { GET } = await import("@/app/api/listings/natural-search/route");
     const response = await GET(
