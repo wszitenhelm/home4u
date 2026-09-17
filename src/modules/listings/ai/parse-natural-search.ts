@@ -236,8 +236,8 @@ async function parseWithGemini(query: string): Promise<NaturalSearchResult | nul
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   const startedAt = Date.now();
-  const log = (success: boolean, detail?: string): void => {
-    logAiCall({
+  const log = async (success: boolean, detail?: string): Promise<void> => {
+    await logAiCall({
       event: "parse_natural_search",
       durationMs: Date.now() - startedAt,
       success,
@@ -266,7 +266,7 @@ async function parseWithGemini(query: string): Promise<NaturalSearchResult | nul
     );
 
     if (!response.ok) {
-      log(false, `HTTP ${response.status}`);
+      await log(false, `HTTP ${response.status}`);
       return null;
     }
 
@@ -274,21 +274,21 @@ async function parseWithGemini(query: string): Promise<NaturalSearchResult | nul
     const text = payload.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("");
 
     if (text === undefined || text.trim().length === 0) {
-      log(false, "empty response text");
+      await log(false, "empty response text");
       return null;
     }
 
     const parsed = naturalSearchResultSchema.safeParse(JSON.parse(text));
 
     if (!parsed.success) {
-      log(false, "response failed validation");
+      await log(false, "response failed validation");
       return null;
     }
 
-    log(true);
+    await log(true);
     return parsed.data;
   } catch (error) {
-    log(false, error instanceof Error ? error.message : String(error));
+    await log(false, error instanceof Error ? error.message : String(error));
     return null;
   } finally {
     clearTimeout(timeout);

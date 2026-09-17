@@ -42,8 +42,8 @@ export async function generateEmbedding(
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   const startedAt = Date.now();
-  const log = (success: boolean, detail?: string): void => {
-    logAiCall({
+  const log = async (success: boolean, detail?: string): Promise<void> => {
+    await logAiCall({
       event: "generate_embedding",
       durationMs: Date.now() - startedAt,
       success,
@@ -74,7 +74,7 @@ export async function generateEmbedding(
     );
 
     if (!response.ok) {
-      log(false, `HTTP ${response.status}`);
+      await log(false, `HTTP ${response.status}`);
 
       return null;
     }
@@ -83,16 +83,16 @@ export async function generateEmbedding(
     const parsed = embedContentResponseSchema.safeParse(payload);
 
     if (!parsed.success) {
-      log(false, "response failed validation");
+      await log(false, "response failed validation");
 
       return null;
     }
 
-    log(true);
+    await log(true);
 
     return parsed.data.embedding.values;
   } catch (error) {
-    log(false, error instanceof Error ? error.message : String(error));
+    await log(false, error instanceof Error ? error.message : String(error));
 
     return null;
   } finally {

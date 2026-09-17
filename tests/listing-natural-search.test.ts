@@ -121,6 +121,7 @@ describe("parseNaturalListingSearch (Gemini call site)", () => {
     vi.doMock("@/shared/env", () => ({
       env: { GEMINI_API_KEY: "test-key", GEMINI_MODEL: "gemini-2.5-flash" },
     }));
+    vi.doMock("@/db/prisma", () => ({ prisma: { aiCallLog: { create: vi.fn().mockResolvedValue({}) } } }));
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
@@ -181,6 +182,7 @@ describe("parseNaturalListingSearch (Gemini call site)", () => {
     vi.doMock("@/shared/env", () => ({
       env: { GEMINI_API_KEY: "test-key", GEMINI_MODEL: "gemini-2.5-flash" },
     }));
+    vi.doMock("@/db/prisma", () => ({ prisma: { aiCallLog: { create: vi.fn().mockResolvedValue({}) } } }));
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 500 }));
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
 

@@ -178,6 +178,24 @@ model EmbeddingBackfillRun {
   @@index([startedAt], map: "embedding_backfill_runs_startedAt_idx")
 }
 
+// One row per logAiCall() attempt (see src/shared/logging), for the Grafana
+// reliability/latency dashboards. This is the persisted counterpart to what
+// was previously console-only output - the console logging stays exactly as
+// it was, this just adds a queryable copy of the same event.
+model AiCallLog {
+  id                String   @id @default(cuid())
+  event             String   @db.VarChar(191)
+  model             String   @db.VarChar(191)
+  success           Boolean
+  fallbackTriggered Boolean
+  durationMs        Int
+  detail            String?  @db.VarChar(512)
+  createdAt         DateTime @default(now())
+
+  @@index([createdAt], map: "ai_call_logs_createdAt_idx")
+  @@index([event, createdAt], map: "ai_call_logs_event_createdAt_idx")
+}
+
 enum Marketplace {
   SELECTED_MARKETPLACE
 }

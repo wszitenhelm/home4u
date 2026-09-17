@@ -125,6 +125,7 @@ describe("generateEmbedding", () => {
 
   it("logs one structured success event and returns the vector on a well-formed response", async () => {
     vi.doMock("@/shared/env", () => ({ env: { GEMINI_API_KEY: "test-key" } }));
+    vi.doMock("@/db/prisma", () => ({ prisma: { aiCallLog: { create: vi.fn().mockResolvedValue({}) } } }));
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ embedding: { values: vector } }) }),
@@ -151,6 +152,7 @@ describe("generateEmbedding", () => {
 
   it("logs one structured failure event and returns null when the HTTP response is not ok", async () => {
     vi.doMock("@/shared/env", () => ({ env: { GEMINI_API_KEY: "test-key" } }));
+    vi.doMock("@/db/prisma", () => ({ prisma: { aiCallLog: { create: vi.fn().mockResolvedValue({}) } } }));
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 500 }));
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
@@ -172,6 +174,7 @@ describe("generateEmbedding", () => {
 
   it("logs one structured failure event and returns null when fetch rejects", async () => {
     vi.doMock("@/shared/env", () => ({ env: { GEMINI_API_KEY: "test-key" } }));
+    vi.doMock("@/db/prisma", () => ({ prisma: { aiCallLog: { create: vi.fn().mockResolvedValue({}) } } }));
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network unreachable")));
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
