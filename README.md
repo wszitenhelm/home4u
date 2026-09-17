@@ -274,6 +274,22 @@ Current MVP behavior:
 - the app does not yet translate vague intent into filters automatically
 - AI assistance is explicitly unimplemented in this stage
 
+## Observability dashboard (Grafana Cloud)
+
+Run history and Gemini call metrics are visualized in Grafana Cloud, reading directly from the app's own MySQL/TiDB tables — no separate metrics pipeline, no data duplicated into Grafana's own storage:
+
+- `FreshnessCheckRun` / `EmbeddingBackfillRun` — one row per scheduled script run, with a `RUNNING` → `COMPLETED` / `COMPLETED_WITH_ERRORS` / `FAILED` lifecycle and per-run counts.
+- `AiCallLog` — one row per Gemini API call attempt (embeddings + natural-language search parsing), with duration, success, and whether the deterministic fallback was triggered.
+
+Dashboard: [Job Run History](https://magentakale2863.grafana.net/d/witxcwr/job-run-history)
+
+**Panels:**
+1. **Run history** — recent `FreshnessCheckRun`/`EmbeddingBackfillRun` rows in one table, `status` color-coded (green/orange/red) so a failure is visible without reading the text.
+2. **Gemini call reliability** — success rate and fallback-triggered rate over time, from `AiCallLog`.
+3. **Gemini call latency** — per-call `durationMs` over time (unaveraged, so a single slow call is visible immediately rather than smoothed into a daily average).
+
+**Setup:** Grafana Cloud free tier, MySQL data source pointed directly at the production TiDB instance (TLS required; TiDB Cloud Serverless usernames need the cluster-specific prefix shown in its own Connect panel). Since panels query TiDB live rather than ingesting metrics into Grafana Cloud's own storage, this doesn't count against the free tier's ingestion/retention limits at all.
+
 ## Known limitations
 
 - Public text search is simple Prisma-based `contains` matching, not ranked search.
